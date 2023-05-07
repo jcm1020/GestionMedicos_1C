@@ -26,6 +26,7 @@ public class GestionMedicosException extends SQLException {
 	public static final int CONSULTA_NO_ANULA = 5;
 	public static final int ANUL_BILLETES_MAYOR = 6;
 	public static final int RESERVA_BILLETES_MAYOR = 7;
+	public static final int ERROR_APLICACION = 8;
 
 	private int codigo; // = -1;
 	private String mensaje;
@@ -51,6 +52,9 @@ public class GestionMedicosException extends SQLException {
 			break;
 		case CONSULTA_NO_ANULA:
 			mensaje = "La Consulta no se puede anular para la fecha introducida";
+			break;
+		case ERROR_APLICACION:
+			mensaje = "La funcion contiene errores de introduccion de datos";
 			break;
 		}					
 
