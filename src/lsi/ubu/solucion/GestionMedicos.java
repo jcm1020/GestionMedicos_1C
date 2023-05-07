@@ -8,7 +8,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 
@@ -21,7 +20,6 @@ import lsi.ubu.util.PoolDeConexiones;
 import lsi.ubu.util.exceptions.SGBDError;
 import lsi.ubu.util.exceptions.oracle.OracleSGBDErrorUtil;
 
-import java.time.temporal.ChronoUnit;
 
 
 /**
@@ -43,8 +41,7 @@ public class GestionMedicos {
 
 	public static void main(String[] args) throws SQLException{	
 		
-		tests();
-		
+		tests();	
 		
 
 		System.out.println("FIN.............");
@@ -179,10 +176,18 @@ public class GestionMedicos {
 			logger.info("Consulta ya reservada");
 			System.out.println("Consulta ya reservada");
 			rs.close();
-			pst.close();		
-
-			 
+			pst.close();
+			//st.close();
 			
+			
+			
+			//Recuperacion de ultimo indice de la tabla CONSULTA
+			rs = st.executeQuery("SELECT max(rownum) FROM consulta");
+			rs.next();
+			Integer indice=rs.getInt(1);
+			rs.close();
+			indice=indice+1;
+			System.out.println("Indice para introducir en sentencia INSERT="+indice);
 			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
 			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1 numero de inserciones realizadas
 			pst = con.prepareStatement("INSERT INTO consulta VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
@@ -190,7 +195,7 @@ public class GestionMedicos {
 			//directamente en el PreparedStatement con el setDate correspondiente
 			//SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
 			//java.sql.Date sqlDate = java.sql.Date.valueOf(m_Fecha_Consulta.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
-			pst.setInt(1,3);
+			pst.setInt(1,indice);
 			pst.setDate(2,sqlDate);
 			pst.setString(3,String.valueOf(identificador_medico));
 			pst.setString(4,m_NIF_cliente);
@@ -205,6 +210,8 @@ public class GestionMedicos {
 			    id = res.getInt(1);
 			}			
 			System.out.println("Indice del nuevo registro="+id);*/
+			
+			
 						
 			
 			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
@@ -239,12 +246,9 @@ public class GestionMedicos {
 			
 			
 			rs.close();
-			st.close();
-			
-			pst.close();
-			
-			rs3.close();
-			
+			st.close();			
+			pst.close();			
+			rs3.close();			
 			con.close();
 			
 			logger.info("Cerrada la conexión y saliendo...");
@@ -253,7 +257,7 @@ public class GestionMedicos {
 			
 		} catch (SQLException e) {
 			//Completar por el alumno
-			con.rollback();
+			//con.rollback();
 			System.out.println(e.getMessage());
 			System.out.println("Codigo de Error Oracle: " + e.getErrorCode());
 			System.out.println("Transaccion retrocedida probablemente "+
@@ -277,8 +281,6 @@ public class GestionMedicos {
 			if (pst!=null) pst.close();
 			if (rs3!=null) rs3.close();
 			if (con!=null) con.close();
-
-			//con.close();
 			
 		}		
 		
@@ -364,7 +366,13 @@ public class GestionMedicos {
 			pst.close();
 			
 			
-			
+			//Recuperacion de ultimo indice de la tabla CONSULTA
+			rs = st.executeQuery("SELECT max(rownum) FROM anulacion");
+			rs.next();
+			Integer indice=rs.getInt(1);
+			rs.close();
+			indice=indice+1;
+			System.out.println("Indice para introducir en sentencia INSERT="+indice);
 			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
 			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1 numero de inserciones realizadas
 			pst = con.prepareStatement("INSERT INTO anulacion VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
@@ -383,7 +391,7 @@ public class GestionMedicos {
 			double dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
 			if(dias<=2) {
 				throw new GestionMedicosException(GestionMedicosException.CONSULTA_NO_ANULA);}
-			pst.setInt(1,2);
+			pst.setInt(1,indice);
 			pst.setInt(2,1);
 			pst.setDate(3,sqlDateAnulacion);			
 			pst.setString(4,"Enfermedad infecciosa");
@@ -451,7 +459,7 @@ public class GestionMedicos {
 				 else {
 					 logger.error("Excepcion de tipo SQLException");
 					 System.out.println("***************************************************");
-				 //throw e;
+				 //throw e; //No lanzamos el error SQLException y podemos continuar procesando el resto del codigo de tests()
 				 }
 			
 					
@@ -568,7 +576,7 @@ public class GestionMedicos {
 			
 			//Reserva de consulta OK
 			reservar_consulta("87654321B", "222222B",  formato.parse("25/03/2023"));
-			//reservar_consulta("78677433R", "8766788Y",  formato.parse("29/04/2023"));
+			reservar_consulta("78677433R", "8766788Y",  formato.parse("29/04/2023"));
 			
 			//Cliente no existe
 			reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
@@ -581,7 +589,7 @@ public class GestionMedicos {
 			
 			//Anula consulta
 			anular_consulta(  "12345678A", "222222B",	formato.parse("24/03/2023"), formato.parse("21/02/2023")  );
-			//anular_consulta(  "87654321B", "8766788Y",	formato.parse("25/03/2022"), formato.parse("22/03/2022")  );
+			anular_consulta(  "87654321B", "8766788Y",	formato.parse("25/03/2022"), formato.parse("22/03/2022")  );
 			
 			//Anula consulta pero no existe
 			anular_consulta(  "12345678A", "222222B",	formato.parse("23/03/2023"), formato.parse("21/04/2023")  );
