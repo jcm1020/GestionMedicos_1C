@@ -143,25 +143,7 @@ public class GestionMedicos {
 			String nombre_cliente=rs.getString(1);
 			logger.info("Localizado cliente con NIF="+'\t'+ m_NIF_cliente+" con nombre= "+nombre_cliente+" Comprobacion="+aux);
 			System.out.println("Localizado cliente con NIF="+'\t'+ m_NIF_cliente+" con nombre= "+nombre_cliente+" Comprobacion="+aux);
-			rs.close();
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
+			rs.close();		
 			
 			
 			
@@ -184,25 +166,7 @@ public class GestionMedicos {
 			logger.info("Consulta ya reservada");
 			System.out.println("Consulta ya reservada");
 			rs.close();
-			pst.close();
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
+			pst.close();		
 
 			 
 			
@@ -343,9 +307,17 @@ public class GestionMedicos {
 			
 			Statement st = con.createStatement();
 			ResultSet rs = st.executeQuery("SELECT ID_MEDICO FROM medico WHERE NIF='"+m_NIF_medico+"'");
+			/*
+			 Si el NIF del medico no existe en la tabla medico lanzará una excepción
+			GestionMedicosException, con el código 2, y el mensaje “Medico inexistente”.
+			 */
 			boolean aux = rs.next();
+			if (!aux)
+				 throw new GestionMedicosException(GestionMedicosException.MEDICO_NO_EXISTE);	
 			System.out.println("Localizado ID_MEDICO="+'\t'+ aux);
 			Integer identificador_medico=rs.getInt(1);
+						
+			
 			
 			//Statement st2 = con.createStatement();
 			ResultSet rs2 = st.executeQuery(    "SELECT * FROM consulta WHERE ID_MEDICO='"+String.valueOf(identificador_medico)+"' ORDER BY FECHA_CONSULTA"    );
@@ -404,7 +376,7 @@ public class GestionMedicos {
 			//reservar_consulta("78677433R", "8766788Y",  formato.parse("29/04/2023"));
 			
 			//Cliente no existe
-			reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
+			//reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
 			
 			//Medico no existe
 			//reservar_consulta("78677433R", "8766788T",  formato.parse("30/04/2023"));
@@ -414,6 +386,9 @@ public class GestionMedicos {
 			
 			//Consulta medico
 			consulta_medico("8766788Y");
+			
+			//Consulta medico pero no existe
+			consulta_medico("8766788T");
 			
 			
 		} catch (SQLException| ParseException e) {				
