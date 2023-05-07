@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import lsi.ubu.enunciado.GestionMedicosException;
 import lsi.ubu.util.ExecuteScript;
 import lsi.ubu.util.PoolDeConexiones;
+import lsi.ubu.util.exceptions.SGBDError;
+import lsi.ubu.util.exceptions.oracle.OracleSGBDErrorUtil;
 
 
 /**
@@ -26,7 +28,7 @@ import lsi.ubu.util.PoolDeConexiones;
  * @author <a href="mailto:jmaudes@ubu.es">Jesus Maudes</a>
  * @author <a href="mailto:rmartico@ubu.es">Raul Marticorena</a>
  * @author <a href="mailto:pgdiaz@ubu.es">Pablo Garcia</a>
- * @author <a href="mailto:alu.ubu.es">Jose Carlos Chico Mena</a>
+ * @author <a href="mailto:jcm1020@alu.ubu.es">Jose Carlos Chico Mena</a>
  * @version 1.0
  * @since 1.0 
  */
@@ -37,17 +39,10 @@ public class GestionMedicos {
 	private static final String script_path = "sql/";
 
 	public static void main(String[] args) throws SQLException{	
-		SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
+		
 		tests();
-		ver_medicos();
-		try {
-			//reservar_consulta("87654321B", "222222B",  formato.parse("24/03/2023"));
-			reservar_consulta("78677433R", "8766788Y",  formato.parse("30/04/2023"));
-		} catch (SQLException | ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		consulta_medico("8766788Y");
+		
+		
 
 		System.out.println("FIN.............");
 	}
@@ -101,6 +96,11 @@ public class GestionMedicos {
 		
 		PoolDeConexiones pool = PoolDeConexiones.getInstance();
 		Connection con=null;
+		
+		Statement st=null;
+		ResultSet rs=null;
+		PreparedStatement pst=null;
+		ResultSet rs3=null;
 
 	
 		try{
@@ -111,8 +111,8 @@ public class GestionMedicos {
 			
 			//La funcion nos proporciona el NIF del medico pero la tabla consulta introduce el ID_MEDICO de ese NIF
 			//en las siguientes lineas realizamos la consulta para obtener el identificador ID_MEDICO del NIF del medico variable 'm_NIF_medico'
-			Statement st = con.createStatement();
-			ResultSet rs = st.executeQuery("SELECT ID_MEDICO FROM medico WHERE NIF='"+m_NIF_medico+"'");
+			st = con.createStatement();
+			rs = st.executeQuery("SELECT ID_MEDICO,CONSULTAS FROM medico WHERE NIF='"+m_NIF_medico+"'");
 			/*
 			 Si el NIF del medico no existe en la tabla medico lanzará una excepción
 			GestionMedicosException, con el código 2, y el mensaje “Medico inexistente”.
@@ -123,6 +123,9 @@ public class GestionMedicos {
 			logger.info("Localizado ID_MEDICO="+'\t'+ aux);
 			System.out.println("Localizado ID_MEDICO="+'\t'+ aux);
 			Integer identificador_medico=rs.getInt(1);
+			Integer numero_de_consultas=rs.getInt(2);
+			System.out.println("Numero de consultas="+'\t'+ numero_de_consultas);
+			rs.close();
 			
 			
 			
@@ -140,6 +143,62 @@ public class GestionMedicos {
 			String nombre_cliente=rs.getString(1);
 			logger.info("Localizado cliente con NIF="+'\t'+ m_NIF_cliente+" con nombre= "+nombre_cliente+" Comprobacion="+aux);
 			System.out.println("Localizado cliente con NIF="+'\t'+ m_NIF_cliente+" con nombre= "+nombre_cliente+" Comprobacion="+aux);
+			rs.close();
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
+			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1 numero de inserciones realizadas
+			pst = con.prepareStatement("SELECT * FROM consulta WHERE FECHA_CONSULTA=?"    );
+			//la fecha proporcionada mediante un dato java.util.Date la transformamos en java.sql.Date para poder introducirla
+			//directamente en el PreparedStatement con el setDate correspondiente
+			//SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
+			java.sql.Date sqlDate = java.sql.Date.valueOf(m_Fecha_Consulta.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+			pst.setDate(1,sqlDate);
+			rs = pst.executeQuery();
+			/*
+			Si el médico ya tiene una consulta el mismo día se lanzará una excepción
+			GestionMedicosException, con el código 3, y el mensaje “Médico ocupado”.
+			*/
+			aux = rs.next();
+			if (aux)
+				 throw new GestionMedicosException(GestionMedicosException.MEDICO_OCUPADO);
+			logger.info("Consulta ya reservada");
+			System.out.println("Consulta ya reservada");
+			rs.close();
+			pst.close();
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 			
 			
 			
@@ -148,17 +207,17 @@ public class GestionMedicos {
 			 
 			
 			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
-			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1
-			PreparedStatement pst = con.prepareStatement("INSERT INTO consulta VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1 numero de inserciones realizadas
+			pst = con.prepareStatement("INSERT INTO consulta VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
 			//la fecha proporcionada mediante un dato java.util.Date la transformamos en java.sql.Date para poder introducirla
-			//directamente en el PreparedStatement con su seDate correspondiente
-			SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
-			java.sql.Date sqlDate = java.sql.Date.valueOf(m_Fecha_Consulta.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+			//directamente en el PreparedStatement con el setDate correspondiente
+			//SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
+			//java.sql.Date sqlDate = java.sql.Date.valueOf(m_Fecha_Consulta.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
 			pst.setInt(1,3);
 			pst.setDate(2,sqlDate);
 			pst.setString(3,String.valueOf(identificador_medico));
 			pst.setString(4,m_NIF_cliente);
-			Integer rs2 = pst.executeUpdate();
+			int rs2 = pst.executeUpdate();
 			boolean b = (rs2 != 0);
 			logger.info("Consulta reservada"+'\t'+ b);
 			System.out.println("Consulta reservada"+'\t'+ b);
@@ -169,14 +228,28 @@ public class GestionMedicos {
 			    id = res.getInt(1);
 			}			
 			System.out.println("Indice del nuevo registro="+id);*/
+						
+			
+			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
+			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1
+			PreparedStatement pst2 = con.prepareStatement("UPDATE medico SET CONSULTAS=? WHERE ID_MEDICO=?");
+			numero_de_consultas=numero_de_consultas+1;
+			pst2.setInt(1,numero_de_consultas);
+			pst2.setInt(2,identificador_medico);
+			rs2 = pst2.executeUpdate();
+			b = (rs2 != 0);
+			logger.info("Consulta sumada a medico"+'\t'+ b);
+			System.out.println("Consulta sumada a medico"+'\t'+ b);		
+			
+			
+			
+			
 			
 			//Recogida de datos desde la tabla actualizada para ratificar el exito de la operacion y dar esa informacion al usuario
 			//Statement st3 = con.createStatement();
 			logger.info("Fecha enviada="+'\t'+'\t'+String.valueOf(sqlDate));
 			System.out.println("Fecha enviada="+'\t'+'\t'+String.valueOf(sqlDate));
-			ResultSet rs3 = st.executeQuery(    "SELECT * FROM consulta WHERE FECHA_CONSULTA=DATE '"+String.valueOf(sqlDate)+"'"    );
-			
-			
+			rs3 = st.executeQuery(    "SELECT * FROM consulta WHERE FECHA_CONSULTA=DATE '"+String.valueOf(sqlDate)+"'"    );
 			logger.info("DATOS INTRODUCIDOS EN TABLA CONSULTA");
 			System.out.println("DATOS INTRODUCIDOS EN TABLA CONSULTA");	
 			logger.info("ID_CONSULTA"+'\t'+"FECHA_CONSULTA"+'\t'+'\t'+"ID_MEDICO"+'\t'+"NIF Cliente");
@@ -206,17 +279,26 @@ public class GestionMedicos {
 			System.out.println(e.getMessage());
 			System.out.println("Codigo de Error Oracle: " + e.getErrorCode());
 			System.out.println("Transaccion retrocedida probablemente "+
-			 "Médico inexistente o Cliente inexistente.");
-			
+			 "Médico inexistente, Cliente inexistente o Medico ocupado.");
 			System.err.println(e.getMessage());
 			e.printStackTrace();
-			
 			logger.error(e.getMessage());
-			throw e;		
+			//throw e;
+			if(new OracleSGBDErrorUtil().checkExceptionToCode( e, SGBDError.FK_VIOLATED))
+				 throw new GestionMedicosException(GestionMedicosException.MEDICO_OCUPADO);
+				 else {
+				 throw e;
+				 }					
 
 		} finally {
 			/*A rellenar por el alumno, liberar recursos*/
-			con.close();
+			if (rs!=null) rs.close();
+			if (st!=null) st.close();
+			if (pst!=null) pst.close();
+			if (rs3!=null) rs3.close();
+			if (con!=null) con.close();
+
+			//con.close();
 			
 		}		
 		
@@ -303,14 +385,40 @@ public class GestionMedicos {
 		
 		CallableStatement cll_reinicia=null;
 		Connection conn = null;
+		SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
+		
 		
 		try {
 			//Reinicio filas
 			conn = pool.getConnection();
 			cll_reinicia = conn.prepareCall("{call inicializa_test}");
 			cll_reinicia.execute();
-		} catch (SQLException e) {				
-			logger.error(e.getMessage());			
+			
+			//Comentar y descomentar para realizar el test
+			
+			//Inicio de pruebas basico consulta de tabla de medicos
+			ver_medicos();
+			
+			//Reserva de consulta OK
+			reservar_consulta("87654321B", "222222B",  formato.parse("25/03/2023"));
+			//reservar_consulta("78677433R", "8766788Y",  formato.parse("29/04/2023"));
+			
+			//Cliente no existe
+			reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
+			
+			//Medico no existe
+			//reservar_consulta("78677433R", "8766788T",  formato.parse("30/04/2023"));
+			
+			//Medico Ocupado
+			//reservar_consulta("12345678A", "222222B",  formato.parse("24/03/2023"));
+			
+			//Consulta medico
+			consulta_medico("8766788Y");
+			
+			
+		} catch (SQLException| ParseException e) {				
+			logger.error(e.getMessage());	
+			e.printStackTrace();
 		} finally {
 			if (cll_reinicia!=null) cll_reinicia.close();
 			if (conn!=null) conn.close();
