@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 
@@ -19,6 +20,8 @@ import lsi.ubu.util.ExecuteScript;
 import lsi.ubu.util.PoolDeConexiones;
 import lsi.ubu.util.exceptions.SGBDError;
 import lsi.ubu.util.exceptions.oracle.OracleSGBDErrorUtil;
+
+import java.time.temporal.ChronoUnit;
 
 
 /**
@@ -50,15 +53,19 @@ public class GestionMedicos {
 			throws SQLException {
 		PoolDeConexiones pool = PoolDeConexiones.getInstance();
 		Connection con=null;
+		
+		Statement st=null;
+		ResultSet rs=null;
 
 	
 		try{
 			con = pool.getConnection();
 			System.out.println();
+			System.out.println("***************************************************");
 			System.out.println("Conectados... Iniciando ejecucion de 'ver_medicos' ");
 			
-			Statement st = con.createStatement();
-			ResultSet rs = st.executeQuery("SElECT * FROM medico");
+			st = con.createStatement();
+			rs = st.executeQuery("SElECT * FROM medico");
 			
 			System.out.println("ID_MEDICO"+'\t'+"NIF"+'\t'+"NOMBRE"+'\t'+"APE1"+'\t'+"APE2"+'\t'+"ESPECIALIDAD"+'\t'+"CONSULTAS");
 			while (rs.next()) { 
@@ -72,6 +79,7 @@ public class GestionMedicos {
 			con.close();
 			
 			System.out.println("Cerrada la conexión y saliendo...");
+			System.out.println("***************************************************");
 			
 		} catch (SQLException e) {
 			//Completar por el alumno
@@ -79,11 +87,15 @@ public class GestionMedicos {
 			e.printStackTrace();
 			
 			logger.error(e.getMessage());
+			logger.error("Excepcion de tipo SQLException");
+			System.out.println("***************************************************");
 			throw e;		
 
 		} finally {
 			/*A rellenar por el alumno, liberar recursos*/
-			con.close();
+			if (rs!=null) rs.close();
+			if (st!=null) st.close();
+			if (con!=null) con.close();
 		}
 		
 	}
@@ -106,6 +118,7 @@ public class GestionMedicos {
 		try{
 			con = pool.getConnection();
 			System.out.println();
+			System.out.println("***************************************************");
 			logger.info("\"Conectados... Iniciando ejecucion de 'reservar_consulta' \"");
 			System.out.println("Conectados... Iniciando ejecucion de 'reservar_consulta' ");
 			
@@ -236,6 +249,7 @@ public class GestionMedicos {
 			
 			logger.info("Cerrada la conexión y saliendo...");
 			System.out.println("Cerrada la conexión y saliendo...");
+			System.out.println("***************************************************");
 			
 		} catch (SQLException e) {
 			//Completar por el alumno
@@ -249,9 +263,11 @@ public class GestionMedicos {
 			logger.error(e.getMessage());
 			//throw e;
 			if(new OracleSGBDErrorUtil().checkExceptionToCode( e, SGBDError.FK_VIOLATED))
-				 throw new GestionMedicosException(GestionMedicosException.MEDICO_OCUPADO);
+				 throw new GestionMedicosException(GestionMedicosException.ERROR_APLICACION);
 				 else {
-				 throw e;
+					 logger.error("Excepcion de tipo SQLException");
+					 System.out.println("***************************************************");
+				 //throw e;
 				 }					
 
 		} finally {
@@ -285,10 +301,11 @@ public class GestionMedicos {
 		try{
 			con = pool.getConnection();
 			System.out.println();
+			System.out.println("***************************************************");
 			logger.info("\"Conectados... Iniciando ejecucion de 'anular_consulta' \"");
 			System.out.println("Conectados... Iniciando ejecucion de 'anular_consulta' ");
 			
-			//La funcion nos proporciona el NIF del medico pero la tabla consulta introduce el ID_MEDICO de ese NIF
+			//La funcion nos proporciona el NIF del medico pero la tabla anulacion introduce el ID_MEDICO de ese NIF
 			//en las siguientes lineas realizamos la consulta para obtener el identificador ID_MEDICO del NIF del medico variable 'm_NIF_medico'
 			st = con.createStatement();
 			rs = st.executeQuery("SELECT ID_MEDICO,CONSULTAS FROM medico WHERE NIF='"+m_NIF_medico+"'");
@@ -326,7 +343,7 @@ public class GestionMedicos {
 			
 			
 			//Realizamos la introduccion de datos con PreparedStatement, seteando los parametros a introducir e introduciendolos con
-			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1 numero de inserciones realizadas
+			//executeUpdate, de ir todo bien el ResultSet rs devolvera el numero de inserciones realizadas
 			pst = con.prepareStatement("SELECT * FROM consulta WHERE FECHA_CONSULTA=?"    );
 			//la fecha proporcionada mediante un dato java.util.Date la transformamos en java.sql.Date para poder introducirla
 			//directamente en el PreparedStatement con el setDate correspondiente
@@ -341,11 +358,10 @@ public class GestionMedicos {
 			aux = rs.next();
 			if (!aux)
 				 throw new GestionMedicosException(GestionMedicosException.CONSULTA_NO_EXISTE);
-			logger.info("Consulta para anular no existente");
-			System.out.println("Consulta para anular no existente");
+			logger.info("Consulta para anular existente");
+			System.out.println("Consulta para anular existente");
 			rs.close();
 			pst.close();
-			
 			
 			
 			
@@ -357,6 +373,16 @@ public class GestionMedicos {
 			//SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
 			sqlDate = java.sql.Date.valueOf(m_Fecha_Consulta.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
 			java.sql.Date sqlDateAnulacion = java.sql.Date.valueOf(m_Fecha_Anulacion.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+			//Antes procedemos a verificar la restriccion de 2 dias como minimo entre la fecha de consulta y la fecha de anulacion
+			//LocalDate localDate = LocalDate.parse(String.valueOf(m_Fecha_Consulta));
+			//LocalDate localDateAnulacion = LocalDate.parse(String.valueOf(m_Fecha_Anulacion));
+			//int control_dias = DAYS.between(localDate-localDateAnulacion);
+			long fechaInicial = m_Fecha_Anulacion.getTime();
+			long fechaFinal = m_Fecha_Consulta.getTime();
+			long diferencia = fechaFinal - fechaInicial;
+			double dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+			if(dias<=2) {
+				throw new GestionMedicosException(GestionMedicosException.CONSULTA_NO_ANULA);}
 			pst.setInt(1,2);
 			pst.setInt(2,1);
 			pst.setDate(3,sqlDateAnulacion);			
@@ -378,12 +404,14 @@ public class GestionMedicos {
 			//executeUpdate, de ir todo bien el ResultSet rs2 devolvera un 1
 			PreparedStatement pst2 = con.prepareStatement("UPDATE medico SET CONSULTAS=? WHERE ID_MEDICO=?");
 			numero_de_consultas=numero_de_consultas-1;
+			if(numero_de_consultas<0) {numero_de_consultas=0;}//Control de error ante mala manipulacion de datos de la BD por otros medios
+			System.out.println("Numero de consultas final para medico"+'\t'+ numero_de_consultas);
 			pst2.setInt(1,numero_de_consultas);
 			pst2.setInt(2,identificador_medico);
 			rs2 = pst2.executeUpdate();
 			b = (rs2 != 0);
-			logger.info("Consulta sumada a medico"+'\t'+ b);
-			System.out.println("Consulta sumada a medico"+'\t'+ b);	
+			logger.info("Consulta restada a medico"+'\t'+ b);
+			System.out.println("Consulta restada a medico"+'\t'+ b);	
 			
 			
 			
@@ -402,6 +430,9 @@ public class GestionMedicos {
 					rs3.getString(1)+'\t'+'\t'+rs3.getString(2).trim()+'\t'+'\t'+'\t'+rs3.getString(3)+'\t'+rs3.getString(4));
 			}
 			
+			logger.info("Cerrada la conexión y saliendo...");
+			System.out.println("Cerrada la conexión y saliendo...");			
+			System.out.println("***************************************************");			
 			
 			
 			
@@ -411,15 +442,16 @@ public class GestionMedicos {
 			System.out.println(e.getMessage());
 			System.out.println("Codigo de Error Oracle: " + e.getErrorCode());
 			System.out.println("Transaccion retrocedida probablemente "+
-			 "Consulta inexistente.");
+			 "Consulta inexistente o la fecha de anulacion es inferior a dos dias.");
 			System.err.println(e.getMessage());
 			e.printStackTrace();
-			logger.error(e.getMessage());
-			//throw e;
+			logger.error(e.getMessage());//se registrarán con nivel error en el logger
 			if(new OracleSGBDErrorUtil().checkExceptionToCode( e, SGBDError.FK_VIOLATED))
-				 throw new GestionMedicosException(GestionMedicosException.CONSULTA_NO_EXISTE);
+				 throw new GestionMedicosException(GestionMedicosException.ERROR_APLICACION);
 				 else {
-				 throw e;
+					 logger.error("Excepcion de tipo SQLException");
+					 System.out.println("***************************************************");
+				 //throw e;
 				 }
 			
 					
@@ -449,6 +481,7 @@ public class GestionMedicos {
 		try{
 			con = pool.getConnection();
 			System.out.println();
+			System.out.println("***************************************************");
 			System.out.println("Conectados... Iniciando ejecucion de 'consulta_medico' ");
 			
 			st = con.createStatement();
@@ -478,6 +511,7 @@ public class GestionMedicos {
 			con.close();
 			
 			System.out.println("Cerrada la conexión y saliendo...");
+			System.out.println("***************************************************");
 			
 		} catch (SQLException e) {
 			//Completar por el alumno	
@@ -490,9 +524,11 @@ public class GestionMedicos {
 			logger.error(e.getMessage());
 			//throw e;
 			if(new OracleSGBDErrorUtil().checkExceptionToCode( e, SGBDError.FK_VIOLATED))
-				 throw new GestionMedicosException(GestionMedicosException.MEDICO_NO_EXISTE);
+				 throw new GestionMedicosException(GestionMedicosException.ERROR_APLICACION);
 				 else {
-				 throw e;
+					 logger.error("Excepcion de tipo SQLException");
+					 System.out.println("***************************************************");
+				 //throw e;
 				 }		
 
 		} finally {
@@ -535,30 +571,35 @@ public class GestionMedicos {
 			//reservar_consulta("78677433R", "8766788Y",  formato.parse("29/04/2023"));
 			
 			//Cliente no existe
-			//reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
+			reservar_consulta("78677433S", "8766788Y",  formato.parse("30/04/2023"));
 			
 			//Medico no existe
-			//reservar_consulta("78677433R", "8766788T",  formato.parse("30/04/2023"));
+			reservar_consulta("78677433R", "8766788T",  formato.parse("30/04/2023"));
 			
 			//Medico Ocupado
-			//reservar_consulta("12345678A", "222222B",  formato.parse("24/03/2023"));
+			reservar_consulta("12345678A", "222222B",  formato.parse("24/03/2023"));
 			
 			//Anula consulta
-			anular_consulta(  "12345678A", "222222B",	formato.parse("24/03/2023"), formato.parse("21/04/2023")  );
+			anular_consulta(  "12345678A", "222222B",	formato.parse("24/03/2023"), formato.parse("21/02/2023")  );
+			//anular_consulta(  "87654321B", "8766788Y",	formato.parse("25/03/2022"), formato.parse("22/03/2022")  );
 			
 			//Anula consulta pero no existe
-			//anular_consulta(  "12345678A", "222222B",	formato.parse("23/03/2023"), formato.parse("21/04/2023")  );
+			anular_consulta(  "12345678A", "222222B",	formato.parse("23/03/2023"), formato.parse("21/04/2023")  );
+			
+			//Anula consulta pero dos dias antes
+			anular_consulta(  "12345678A", "222222B",	formato.parse("24/03/2023"), formato.parse("22/03/2023")  );
 			
 			//Consulta medico
 			consulta_medico("8766788Y");
 			
 			//Consulta medico pero no existe
-			//consulta_medico("8766788T");
+			consulta_medico("8766788T");
 			
 			
 		} catch (SQLException| ParseException e) {				
 			logger.error(e.getMessage());	
 			e.printStackTrace();
+			System.out.println("***************************************************");
 		} finally {
 			if (cll_reinicia!=null) cll_reinicia.close();
 			if (conn!=null) conn.close();
