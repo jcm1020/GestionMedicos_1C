@@ -40,7 +40,7 @@ public class GestionMedicos {
 	private static final String script_path = "sql/";
 
 	public static void main(String[] args) throws SQLException{	
-		
+		System.out.println("Se cambiaron los permisos para poder ejecutar sqlplus.sh en UBUNTU con 'chmod 777 lanza_sqlplus.sh'");
 		tests();	
 		
 
